@@ -95,7 +95,7 @@ ZLIB_VERSION := 1.3
 ZLIB_DIR     := zlib-$(ZLIB_VERSION)
 ZLIB_ARCHIVE := $(ZLIB_DIR).tar.gz
 
-CMAKE_CONFIGURE = mkdir -p $(@D)/_build && cd $(@D)/_build && cmake .. -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_TOOLCHAIN_FILE=$(MAKE_DIR)/mingw32.cmake -DCMAKE_INSTALL_PREFIX=$(PREFIX_DIR) -DCMAKE_PREFIX_PATH=$(PREFIX_DIR) -DCMAKE_FIND_ROOT_PATH="/usr/i686-w64-mingw32;$(PREFIX_DIR)"
+CMAKE_CONFIGURE = mkdir -p $(@D)/_build && cd $(@D)/_build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_TOOLCHAIN_FILE=$(MAKE_DIR)/mingw32.cmake -DCMAKE_INSTALL_PREFIX=$(PREFIX_DIR) -DCMAKE_PREFIX_PATH=$(PREFIX_DIR) -DCMAKE_FIND_ROOT_PATH="/usr/i686-w64-mingw32;$(PREFIX_DIR)"
 
 AUTOTOOLS_CONFIGURE = mkdir -p $(@D)/_build && cd $(@D)/_build && ../configure --host=i686-w64-mingw32 --prefix=$(PREFIX_DIR) CFLAGS="-I$(PREFIX_DIR)/include" LDFLAGS="-L$(PREFIX_DIR)/lib"
 
@@ -135,10 +135,18 @@ $(OPENRCT2_DIR)/extracted:
 	touch $@
 
 $(OPENRCT2_DIR)/configured: $(OPENRCT2_DIR)/extracted $(CURL_DIR)/installed $(FREETYPE_DIR)/installed $(GMP_DIR)/installed $(LIBICONV_DIR)/installed $(LIBPNG_DIR)/installed $(LIBTASN1_DIR)/installed $(LIBUNISTRING_DIR)/installed $(LIBZIP_DIR)/installed $(MBEDTLS_DIR)/installed $(NETTLE_DIR)/installed $(NLOHMANNJSON_DIR)/installed $(OPENSSL_DIR)/installed $(SDL2_DIR)/installed $(SPEEXDSP_DIR)/installed $(WINPTHREAD_DIR)/installed $(ZLIB_DIR)/installed i686-w64-mingw32-pkg-config
-	mkdir -p $(@D)/_build && cd $(@D)/_build && cmake .. -DCMAKE_TOOLCHAIN_FILE=../CMakeLists_mingw.txt -DCMAKE_INSTALL_PREFIX="$(PREFIX_DIR)" -DCMAKE_PREFIX_PATH="$(PREFIX_DIR)" -DCMAKE_CXX_FLAGS="-I$(PREFIX_DIR)/include -I$(PREFIX_DIR)/include/SDL2 -fpermissive $(if $(STATIC),-DCURL_STATICLIB,)" -DDISABLE_DISCORD_RPC=ON -DDISABLE_FLAC=ON -DDISABLE_NETWORK=OFF -DDISABLE_VORBIS=ON -DDOWNLOAD_OPENMSX=OFF -DDOWNLOAD_OPENSFX=OFF -DENABLE_SCRIPTING=OFF -DCMAKE_EXE_LINKER_FLAGS="-L$(PREFIX_DIR)/lib" -DPKG_CONFIG_EXECUTABLE="$(TOPDIR)/i686-w64-mingw32-pkg-config" -DSTATIC=$(if $(STATIC),ON,OFF) -DPORTABLE=ON --debug-find -DCMAKE_LIBRARY_PATH="$(PREFIX_DIR)" -DCMAKE_INCLUDE_PATH="$(PREFIX_DIR)" -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=FALSE -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	mkdir -p $(@D)/_build && cd $(@D)/_build && cmake .. -G Ninja -DCMAKE_TOOLCHAIN_FILE=../CMakeLists_mingw.txt -DCMAKE_INSTALL_PREFIX="$(PREFIX_DIR)" -DCMAKE_PREFIX_PATH="$(PREFIX_DIR)" -DCMAKE_CXX_FLAGS="-I$(PREFIX_DIR)/include -I$(PREFIX_DIR)/include/SDL2 -fpermissive $(if $(STATIC),-DCURL_STATICLIB,)" -DDISABLE_DISCORD_RPC=ON -DDISABLE_FLAC=ON -DDISABLE_NETWORK=OFF -DDISABLE_VORBIS=ON -DDOWNLOAD_OPENMSX=OFF -DDOWNLOAD_OPENSFX=OFF -DENABLE_SCRIPTING=OFF -DCMAKE_EXE_LINKER_FLAGS="-L$(PREFIX_DIR)/lib" -DPKG_CONFIG_EXECUTABLE="$(TOPDIR)/i686-w64-mingw32-pkg-config" -DSTATIC=$(if $(STATIC),ON,OFF) -DPORTABLE=ON --debug-find -DCMAKE_LIBRARY_PATH="$(PREFIX_DIR);$(PREFIX_DIR)/lib" -DCMAKE_INCLUDE_PATH="$(PREFIX_DIR)" -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=FALSE -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 ifeq ($(CMAKE_BUILD_TYPE),Debug)
 	sed -e 's/-mwindows//' -i $(OPENRCT2_DIR)/_build/CMakeFiles/openrct2.dir/linkLibs.rsp
 endif
+	touch $@
+
+$(OPENRCT2_DIR)/built: $(OPENRCT2_DIR)/configured
+	cd $(@D)/_build && ninja
+	touch $@
+
+$(OPENRCT2_DIR)/installed: $(OPENRCT2_DIR)/built
+	cd $(@D)/_build && ninja install
 	touch $@
 
 # Curl
@@ -150,6 +158,14 @@ $(CURL_ARCHIVE):
 $(CURL_DIR)/configured: $(CURL_DIR)/extracted $(MBEDTLS_DIR)/installed $(ZLIB_DIR)/installed
 	$(CMAKE_CONFIGURE) -DCURL_USE_MBEDTLS=ON -DCURL_USE_OPENSSL=OFF -DBUILD_TESTING=OFF -DCURL_TARGET_WINDOWS_VERSION=0x501 -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=$(if $(STATIC),OFF,ON) -DBUILD_CURL_EXE=OFF --debug-find
 #	$(AUTOTOOLS_CONFIGURE) --enable-shared --enable-static --with-openssl
+	touch $@
+
+$(CURL_DIR)/built: $(CURL_DIR)/configured
+	cd $(@D)/_build && ninja
+	touch $@
+
+$(CURL_DIR)/installed: $(CURL_DIR)/built
+	cd $(@D)/_build && ninja install
 	touch $@
 
 # Freetype
@@ -215,6 +231,14 @@ $(LIBZIP_DIR)/configured: $(LIBZIP_DIR)/extracted
 	$(CMAKE_CONFIGURE) -DENABLE_WINDOWS_CRYPTO=OFF -DENABLE_OPENSSL=OFF -DENABLE_MBEDTLS=OFF -DENABLE_ZSTD=OFF -DBUILD_SHARED_LIBS=$(if $(STATIC),OFF,ON) && sed -e '/HAVE_.*_S$$/s/define/undef/' -e '$$a#define _INC_STDIO_S' -i config.h
 	touch $@
 
+$(LIBZIP_DIR)/built: $(LIBZIP_DIR)/configured
+	cd $(@D)/_build && ninja
+	touch $@
+
+$(LIBZIP_DIR)/installed: $(LIBZIP_DIR)/built
+	cd $(@D)/_build && ninja install
+	touch $@
+
 # mbedtls
 
 $(MBEDTLS_ARCHIVE):
@@ -253,6 +277,14 @@ $(NLOHMANNJSON_DIR)/configured: $(NLOHMANNJSON_DIR)/extracted
 	$(CMAKE_CONFIGURE) -DBUILD_TESTING=OFF -DJSON_BuildTests=OFF
 	touch $@
 
+$(NLOHMANNJSON_DIR)/built: $(NLOHMANNJSON_DIR)/configured
+	cd $(@D)/_build && ninja
+	touch $@
+
+$(NLOHMANNJSON_DIR)/installed: $(NLOHMANNJSON_DIR)/built
+	cd $(@D)/_build && ninja install
+	touch $@
+
 # OpenSSL
 
 $(OPENSSL_ARCHIVE):
@@ -288,6 +320,14 @@ $(SDL2_DIR)/configured: $(SDL2_DIR)/extracted
 	$(CMAKE_CONFIGURE) $(if $(STATIC),-DSDL_SHARED=OFF,)
 	touch $@
 
+$(SDL2_DIR)/built: $(SDL2_DIR)/configured
+	cd $(@D)/_build && ninja
+	touch $@
+
+$(SDL2_DIR)/installed: $(SDL2_DIR)/built
+	cd $(@D)/_build && ninja install
+	touch $@
+
 # Speex DSP
 
 $(SPEEXDSP_ARCHIVE):
@@ -316,7 +356,7 @@ $(ZLIB_DIR)/configured: $(ZLIB_DIR)/extracted
 	touch $@
 
 $(ZLIB_DIR)/installed: $(ZLIB_DIR)/built
-	cd $(@D)/_build && make install
+	cd $(@D)/_build && ninja install
 	ln -rsf build/lib/libzlibstatic.a build/lib/libz.a
 	touch $@
 
